@@ -1,4 +1,4 @@
-﻿import { CheckCircle2, Download, FileText, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { CheckCircle2, Download, FileText, Loader2, Sparkles, Wand2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
@@ -6,9 +6,9 @@ import "./styles.css";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const examples = [
-  "AI tools for small businesses",
-  "Startup pitch deck for a food delivery app",
-  "Cybersecurity awareness for college students",
+  { topic: "AI tools for small businesses", deck_type: "business", audience: "small business owners" },
+  { topic: "Startup pitch deck for a food delivery app", deck_type: "startup_pitch", audience: "seed investors" },
+  { topic: "Cybersecurity awareness for college students", deck_type: "education", audience: "college students" },
 ];
 
 const themeLabels = {
@@ -19,6 +19,24 @@ const themeLabels = {
   warm: "Warm",
 };
 
+const deckTypeLabels = {
+  business: "Business Brief",
+  startup_pitch: "Startup Pitch",
+  education: "Education Deck",
+  sales: "Sales Deck",
+  research: "Research Report",
+  general: "General Deck",
+};
+
+const layoutLabels = {
+  bullets: "Key points",
+  two_column: "Compare",
+  timeline: "Timeline",
+  metrics: "Metrics",
+  quote: "Insight",
+  closing: "Close",
+};
+
 function App() {
   const [form, setForm] = useState({
     topic: "Artificial Intelligence in Education",
@@ -26,6 +44,7 @@ function App() {
     audience: "college students",
     tone: "educational",
     theme: "modern",
+    deck_type: "education",
     language: "English",
     include_speaker_notes: true,
     extra_instructions: "Use simple examples and practical takeaways.",
@@ -42,6 +61,17 @@ function App() {
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const applyExample = (example) => {
+    setForm((current) => ({
+      ...current,
+      topic: example.topic,
+      deck_type: example.deck_type,
+      audience: example.audience,
+      theme: example.deck_type === "startup_pitch" ? "startup" : current.theme,
+    }));
+    setDeckPlan(null);
   };
 
   const requestBody = () => ({
@@ -107,13 +137,13 @@ function App() {
           </div>
           <h1>Prompt se polished PowerPoint deck banao.</h1>
           <p>
-            Topic, audience, tone aur instructions do. App outline preview karta hai,
-            speaker notes banata hai, aur editable `.pptx` download deta hai.
+            Topic, deck type, audience aur tone choose karo. App outline preview karta hai,
+            speaker notes banata hai, aur layout-aware editable `.pptx` download deta hai.
           </p>
           <div className="example-row">
             {examples.map((example) => (
-              <button className="chip" type="button" key={example} onClick={() => updateField("topic", example)}>
-                {example}
+              <button className="chip" type="button" key={example.topic} onClick={() => applyExample(example)}>
+                {example.topic}
               </button>
             ))}
           </div>
@@ -127,12 +157,16 @@ function App() {
 
           <div className="grid-two">
             <label>
-              Slides
-              <input type="number" min="3" max="15" value={form.slide_count} onChange={(event) => updateField("slide_count", event.target.value)} />
+              Deck type
+              <select value={form.deck_type} onChange={(event) => updateField("deck_type", event.target.value)}>
+                {Object.entries(deckTypeLabels).map(([value, label]) => (
+                  <option value={value} key={value}>{label}</option>
+                ))}
+              </select>
             </label>
             <label>
-              Language
-              <input value={form.language} onChange={(event) => updateField("language", event.target.value)} />
+              Slides
+              <input type="number" min="3" max="15" value={form.slide_count} onChange={(event) => updateField("slide_count", event.target.value)} />
             </label>
           </div>
 
@@ -142,6 +176,13 @@ function App() {
               <input value={form.audience} onChange={(event) => updateField("audience", event.target.value)} />
             </label>
             <label>
+              Language
+              <input value={form.language} onChange={(event) => updateField("language", event.target.value)} />
+            </label>
+          </div>
+
+          <div className="grid-two">
+            <label>
               Tone
               <select value={form.tone} onChange={(event) => updateField("tone", event.target.value)}>
                 <option value="professional">Professional</option>
@@ -149,6 +190,14 @@ function App() {
                 <option value="persuasive">Persuasive</option>
                 <option value="educational">Educational</option>
                 <option value="executive">Executive</option>
+              </select>
+            </label>
+            <label>
+              Theme
+              <select value={form.theme} onChange={(event) => updateField("theme", event.target.value)}>
+                {Object.entries(themeLabels).map(([value, label]) => (
+                  <option value={value} key={value}>{label}</option>
+                ))}
               </select>
             </label>
           </div>
@@ -197,23 +246,28 @@ function App() {
         <div className={`mini-slide title-slide ${form.theme}`}>
           <FileText size={24} />
           <strong>{deckPlan?.title || form.topic || "Presentation Topic"}</strong>
-          <span>{deckPlan?.subtitle || form.audience}</span>
+          <span>{deckPlan?.subtitle || deckTypeLabels[form.deck_type]}</span>
         </div>
         <div className="outline-panel">
           <div className="outline-head">
             <strong>Deck Outline</strong>
             <span>{deckPlan ? `${deckPlan.slides.length} slides` : `${form.slide_count} planned slides`}</span>
           </div>
+          <div className="template-meta">
+            <span>{deckTypeLabels[form.deck_type]}</span>
+            <span>{themeLabels[form.theme]}</span>
+          </div>
           {(deckPlan?.slides || [
-            { title: "Overview", bullets: ["Key context", "Benefits", "Challenges"] },
-            { title: "Action Plan", bullets: ["Steps", "Timeline", "Metrics"] },
-            { title: "Conclusion", bullets: ["Recommendations", "Next steps"] },
+            { title: "Learning Goals", layout: "bullets", bullets: ["Clear objectives", "Simple examples"] },
+            { title: "Worked Example", layout: "timeline", bullets: ["Step by step flow"] },
+            { title: "Takeaways", layout: "closing", bullets: ["Recommendations", "Next steps"] },
           ]).slice(0, 6).map((slide, index) => (
             <div className="outline-item" key={`${slide.title}-${index}`}>
               <span>{index + 1}</span>
               <div>
                 <strong>{slide.title}</strong>
                 <p>{slide.bullets?.[0]}</p>
+                <small>{layoutLabels[slide.layout] || "Key points"}</small>
               </div>
             </div>
           ))}

@@ -1,6 +1,6 @@
-﻿# AI PPT Slide Generator
+# AI PPT Slide Generator
 
-AI PPT Slide Generator is a full-stack web app that turns a simple topic or prompt into an editable PowerPoint presentation. It creates a structured deck outline, supports multiple themes and speaker notes, previews the plan before download, and exports a real `.pptx` file.
+AI PPT Slide Generator is a full-stack web app that turns a simple topic or prompt into an editable PowerPoint presentation. It creates a structured deck outline, supports multiple deck types, renders varied slide layouts, previews the plan before download, and exports a real `.pptx` file.
 
 [![CI](https://github.com/Rajesh-D-kasar/ai-ppt-slid-generater/actions/workflows/ci.yml/badge.svg)](https://github.com/Rajesh-D-kasar/ai-ppt-slid-generater/actions/workflows/ci.yml)
 
@@ -8,9 +8,10 @@ AI PPT Slide Generator is a full-stack web app that turns a simple topic or prom
 
 - Generate editable PowerPoint decks from a topic or prompt
 - Preview the AI-created slide outline before downloading
-- Choose slide count, audience, tone, language, and visual theme
+- Choose deck type, slide count, audience, tone, language, and visual theme
 - Add speaker notes automatically
-- Export clean `.pptx` files with title, agenda, and content slides
+- Export clean `.pptx` files with title, agenda, and layout-aware content slides
+- Use deck templates for business, startup pitch, education, sales, research, and general topics
 - Works without an API key using demo-mode fallback content
 - FastAPI backend with a React/Vite frontend
 - Automated backend tests and GitHub Actions CI
@@ -18,9 +19,10 @@ AI PPT Slide Generator is a full-stack web app that turns a simple topic or prom
 ## Demo Flow
 
 1. Enter a topic, for example `AI tools for small businesses`.
-2. Choose slide count, audience, tone, language, and theme.
-3. Click `Preview Outline` to inspect the generated deck plan.
-4. Click `Generate PPT` to download the editable PowerPoint file.
+2. Choose a deck type such as `Business Brief`, `Startup Pitch`, `Education Deck`, `Sales Deck`, or `Research Report`.
+3. Set slide count, audience, tone, language, and theme.
+4. Click `Preview Outline` to inspect the generated deck plan.
+5. Click `Generate PPT` to download the editable PowerPoint file.
 
 ## Tech Stack
 
@@ -48,12 +50,13 @@ FastAPI Backend
    |
    +--> AI service
    |      - Uses OpenAI when OPENAI_API_KEY is available
-   |      - Uses demo fallback when no key is configured
+   |      - Uses deck-specific blueprints in demo mode
+   |      - Normalizes every slide with a supported layout
    |
    +--> PPTX service
           - Builds title slide
           - Builds agenda slide
-          - Builds designed content slides
+          - Renders quote, bullets, two-column, timeline, metrics, and closing layouts
           - Adds speaker notes
           - Returns .pptx download
 ```
@@ -68,8 +71,8 @@ backend/
   app/
     main.py                API routes and app metadata
     models.py              request and deck schemas
-    ai_service.py          AI prompt, demo fallback, normalization
-    pptx_service.py        PowerPoint generation and themes
+    ai_service.py          AI prompt, deck blueprints, demo fallback, normalization
+    pptx_service.py        PowerPoint generation, themes, deck labels, slide layouts
   tests/
     test_api.py            backend API and PPT export tests
   requirements.txt         backend dependencies
@@ -161,6 +164,23 @@ Returns available presentation themes.
 }
 ```
 
+### `GET /api/deck-types`
+
+Returns available deck type templates.
+
+```json
+{
+  "deck_types": {
+    "business": "Business Brief",
+    "startup_pitch": "Startup Pitch",
+    "education": "Education Deck",
+    "sales": "Sales Deck",
+    "research": "Research Report",
+    "general": "General Deck"
+  }
+}
+```
+
 ### `POST /api/preview-plan`
 
 Returns the generated deck outline as JSON.
@@ -172,6 +192,7 @@ Returns the generated deck outline as JSON.
   "audience": "college students",
   "tone": "educational",
   "theme": "modern",
+  "deck_type": "education",
   "language": "English",
   "include_speaker_notes": true,
   "extra_instructions": "Use simple examples and practical takeaways."
@@ -187,6 +208,26 @@ Response content type:
 ```text
 application/vnd.openxmlformats-officedocument.presentationml.presentation
 ```
+
+## Deck Types and Layouts
+
+Available deck types:
+
+- `business`: executive brief, priorities, impact, roadmap, metrics
+- `startup_pitch`: problem, solution, market, business model, traction, ask
+- `education`: learning goals, examples, checks, takeaways
+- `sales`: customer problem, value drivers, proof, rollout, next step
+- `research`: question, methodology, findings, limitations, recommendations
+- `general`: flexible structure for broad topics
+
+Slides can use these layouts:
+
+- `quote`: big opening insight or framing statement
+- `bullets`: standard content slide with visual panel
+- `two_column`: compare priorities, risks, actions, or proof points
+- `timeline`: phased roadmap or step-by-step explanation
+- `metrics`: card-based impact or KPI slide
+- `closing`: final recommendation and next steps
 
 ## Themes
 
@@ -267,7 +308,7 @@ Set `OPENAI_API_KEY` in `backend/.env` and restart the backend.
 ## Roadmap
 
 - Add slide image generation or stock-image suggestions
-- Add branded company templates
+- Add branded company templates and uploaded master slide support
 - Add template upload support
 - Add user accounts and saved deck history
 - Add PDF export
