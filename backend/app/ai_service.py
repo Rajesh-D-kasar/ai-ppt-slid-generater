@@ -5,12 +5,16 @@ from json import JSONDecodeError
 
 from openai import OpenAI
 
-from .models import DeckPlan, GenerateDeckRequest, SlidePlan
+from .models import DeckPlan, GenerateDeckRequest, SlideLayout, SlidePlan
 
-ALLOWED_LAYOUTS = {"bullets", "two_column", "timeline", "metrics", "quote", "closing"}
+DEFAULT_MODEL = "gpt-4.1-mini"
 FALSE_VALUES = {"0", "false", "no", "off"}
+ALLOWED_LAYOUTS: set[SlideLayout] = {"bullets", "two_column", "timeline", "metrics", "quote", "closing"}
 
-DECK_BLUEPRINTS = {
+BlueprintEntry = tuple[str, str, SlideLayout]
+DeckBlueprint = list[BlueprintEntry]
+
+DECK_BLUEPRINTS: dict[str, DeckBlueprint] = {
     "business": [
         ("Executive Overview", "Frame the decision, opportunity, and expected outcome", "quote"),
         ("Market Context", "Explain the external situation and why timing matters", "bullets"),
@@ -74,34 +78,47 @@ DECK_BLUEPRINTS = {
 }
 
 
-def _blueprint_for(deck_type: str):
+def _blueprint_for(deck_type: str) -> DeckBlueprint:
     return DECK_BLUEPRINTS.get(deck_type, DECK_BLUEPRINTS["general"])
 
 
-def _clean_bullets(bullets: list[str]) -> list[str]:
-    cleaned = []
-    for bullet in bullets:
-        text = re.sub(r"\s+", " ", str(bullet)).strip(" -\t")
-        if text:
-            cleaned.append(text[:180])
-    return cleaned[:6]
+def _display_deck_type(deck_type: str) -> str:
+    return deck_type.replace("_", " ")
 
 
-def _clean_layout(layout: str, fallback: str) -> str:
-    layout = str(layout or "").strip().lower()
-    return layout if layout in ALLOWED_LAYOUTS else fallback
+def _configured_model() -> str:
+    return os.getenv("OPENAI_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
 
 
-def _ai_fallback_enabled() -> bool:
+def _should_fallback_to_demo() -> bool:
     value = os.getenv("AI_FALLBACK_ON_ERROR", "true").strip().lower()
     return value not in FALSE_VALUES
 
 
-def _fallback_slide(request: GenerateDeckRequest, index: int) -> SlidePlan:
+def _single_line(value: str, max_length: int) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()[:max_length]
+
+
+def _clean_bullets(raw_bullets: list[str]) -> list[str]:
+    bullets: list[str] = []
+    for bullet in raw_bullets:
+        text = _single_line(str(bullet).strip(" -\t"), 180)
+        if text:
+            bullets.append(text)
+    return bullets[:6]
+
+
+def _clean_layout(layout: str, fallback: SlideLayout) -> SlideLayout:
+    requested_layout = str(layout or "").strip().lower()
+    return requested_layout if requested_layout in ALLOWED_LAYOUTS else fallback
+
+
+def _build_blueprint_slide(request: GenerateDeckRequest, index: int) -> SlidePlan:
     blueprint = _blueprint_for(request.deck_type)
     section, purpose, layout = blueprint[index % len(blueprint)]
     if index == request.slide_count - 1:
         section, purpose, layout = blueprint[-1]
+
     return SlidePlan(
         title=section,
         bullets=[
@@ -115,45 +132,52 @@ def _fallback_slide(request: GenerateDeckRequest, index: int) -> SlidePlan:
     )
 
 
+def build_demo_deck(request: GenerateDeckRequest) -> DeckPlan:
+    slides = [_build_blueprint_slide(request, index) for index in range(request.slide_count)]
+    return DeckPlan(
+        title=request.topic,
+        subtitle=f"A {_display_deck_type(request.deck_type)} presentation for {request.audience}",
+        slides=slides,
+    )
+
+
 def normalize_deck(deck: DeckPlan, request: GenerateDeckRequest) -> DeckPlan:
     blueprint = _blueprint_for(request.deck_type)
-    slides = []
+    slides: list[SlidePlan] = []
+
     for index, slide in enumerate(deck.slides[: request.slide_count]):
         _, _, fallback_layout = blueprint[index % len(blueprint)]
-        title = re.sub(r"\s+", " ", slide.title).strip()[:90] or "Untitled Slide"
-        bullets = _clean_bullets(slide.bullets)
-        if not bullets:
-            bullets = [f"Key point about {request.topic}", "Practical example", "Audience takeaway"]
-        notes = slide.speaker_notes.strip() if request.include_speaker_notes else ""
+        title = _single_line(slide.title, 90) or "Untitled Slide"
+        bullets = _clean_bullets(slide.bullets) or [
+            f"Key point about {request.topic}",
+            "Practical example",
+            "Audience takeaway",
+        ]
+        speaker_notes = slide.speaker_notes.strip() if request.include_speaker_notes else ""
+
         slides.append(
             SlidePlan(
                 title=title,
                 bullets=bullets,
-                speaker_notes=notes,
-                visual_hint=slide.visual_hint.strip()[:160],
+                speaker_notes=speaker_notes,
+                visual_hint=_single_line(slide.visual_hint, 160),
                 layout=_clean_layout(slide.layout, fallback_layout),
             )
         )
 
     while len(slides) < request.slide_count:
-        slides.append(_fallback_slide(request, len(slides)))
+        slides.append(_build_blueprint_slide(request, len(slides)))
 
     if slides:
         slides[-1].layout = "closing"
 
     return DeckPlan(
-        title=(deck.title.strip() or request.topic)[:120],
-        subtitle=(deck.subtitle.strip() or f"A {request.deck_type.replace('_', ' ')} deck for {request.audience}")[:180],
+        title=(_single_line(deck.title, 120) or request.topic)[:120],
+        subtitle=(
+            _single_line(deck.subtitle, 180)
+            or f"A {_display_deck_type(request.deck_type)} deck for {request.audience}"
+        )[:180],
         slides=slides[: request.slide_count],
-    )
-
-
-def build_demo_deck(request: GenerateDeckRequest) -> DeckPlan:
-    slides = [_fallback_slide(request, index) for index in range(request.slide_count)]
-    return DeckPlan(
-        title=request.topic,
-        subtitle=f"A {request.deck_type.replace('_', ' ')} presentation for {request.audience}",
-        slides=slides,
     )
 
 
@@ -165,31 +189,8 @@ def _extract_json_object(text: str) -> str:
     return text[start : end + 1]
 
 
-def get_ai_provider_status() -> dict[str, str | bool]:
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini").strip() or "gpt-4.1-mini"
-    fallback_on_error = _ai_fallback_enabled()
-    if api_key:
-        return {
-            "mode": "openai",
-            "has_api_key": True,
-            "model": model,
-            "fallback_on_error": fallback_on_error,
-            "message": "OpenAI generation is configured.",
-        }
+def _build_prompt(request: GenerateDeckRequest) -> dict:
     return {
-        "mode": "demo",
-        "has_api_key": False,
-        "model": model,
-        "fallback_on_error": fallback_on_error,
-        "message": "Demo mode is active because OPENAI_API_KEY is not configured.",
-    }
-
-
-def _build_ai_deck(request: GenerateDeckRequest, api_key: str) -> DeckPlan:
-    client = OpenAI(api_key=api_key)
-    model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
-    prompt = {
         "topic": request.topic,
         "slide_count": request.slide_count,
         "audience": request.audience,
@@ -203,8 +204,34 @@ def _build_ai_deck(request: GenerateDeckRequest, api_key: str) -> DeckPlan:
         "recommended_structure": _blueprint_for(request.deck_type),
     }
 
+
+def get_ai_provider_status() -> dict[str, str | bool]:
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    model = _configured_model()
+    fallback_on_error = _should_fallback_to_demo()
+
+    if api_key:
+        return {
+            "mode": "openai",
+            "has_api_key": True,
+            "model": model,
+            "fallback_on_error": fallback_on_error,
+            "message": "OpenAI generation is configured.",
+        }
+
+    return {
+        "mode": "demo",
+        "has_api_key": False,
+        "model": model,
+        "fallback_on_error": fallback_on_error,
+        "message": "Demo mode is active because OPENAI_API_KEY is not configured.",
+    }
+
+
+def _build_ai_deck(request: GenerateDeckRequest, api_key: str) -> DeckPlan:
+    client = OpenAI(api_key=api_key)
     response = client.chat.completions.create(
-        model=model,
+        model=_configured_model(),
         response_format={"type": "json_object"},
         messages=[
             {
@@ -218,7 +245,7 @@ def _build_ai_deck(request: GenerateDeckRequest, api_key: str) -> DeckPlan:
                     "Follow the deck type and make the deck ready for PowerPoint."
                 ),
             },
-            {"role": "user", "content": json.dumps(prompt)},
+            {"role": "user", "content": json.dumps(_build_prompt(request))},
         ],
     )
 
@@ -237,7 +264,7 @@ def generate_deck_plan(request: GenerateDeckRequest) -> DeckPlan:
     try:
         return normalize_deck(_build_ai_deck(request, api_key), request)
     except Exception as exc:
-        if _ai_fallback_enabled():
+        if _should_fallback_to_demo():
             fallback = build_demo_deck(request)
             fallback.subtitle = f"{fallback.subtitle} (demo fallback after AI error)"
             return normalize_deck(fallback, request)

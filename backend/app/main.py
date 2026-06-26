@@ -1,5 +1,6 @@
 import os
 import re
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -7,10 +8,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from .ai_service import generate_deck_plan, get_ai_provider_status
-from .models import GenerateDeckRequest
+from .models import DeckPlan, GenerateDeckRequest
 from .pptx_service import DECK_TYPE_LABELS, THEMES, build_pptx
 
-load_dotenv()
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+load_dotenv(BACKEND_DIR / ".env")
 
 app = FastAPI(
     title="AI PPT Slide Generator API",
@@ -36,7 +38,7 @@ def _safe_filename(topic: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]+", "-", topic).strip("-").lower() or "presentation"
 
 
-def _build_deck_or_502(request: GenerateDeckRequest):
+def _build_deck_or_502(request: GenerateDeckRequest) -> DeckPlan:
     try:
         return generate_deck_plan(request)
     except RuntimeError as exc:
