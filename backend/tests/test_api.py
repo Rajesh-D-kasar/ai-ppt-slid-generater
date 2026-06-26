@@ -32,6 +32,27 @@ class ApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
 
+
+    def test_ai_status_endpoint_reports_demo_mode(self):
+        response = self.client.get("/api/ai-status")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["mode"], "demo")
+        self.assertFalse(body["has_api_key"])
+        self.assertEqual(body["model"], "gpt-4.1-mini")
+
+    def test_ai_status_endpoint_reports_openai_mode(self):
+        os.environ["OPENAI_API_KEY"] = "test-key"
+        self.addCleanup(lambda: os.environ.pop("OPENAI_API_KEY", None))
+
+        response = self.client.get("/api/ai-status")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["mode"], "openai")
+        self.assertTrue(body["has_api_key"])
+
     def test_theme_endpoint_lists_available_themes(self):
         response = self.client.get("/api/themes")
 

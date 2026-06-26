@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from .ai_service import generate_deck_plan
+from .ai_service import generate_deck_plan, get_ai_provider_status
 from .models import GenerateDeckRequest
 from .pptx_service import DECK_TYPE_LABELS, THEMES, build_pptx
 
@@ -19,7 +19,7 @@ app = FastAPI(
         "The API supports outline preview, deck types, themed PPTX export, speaker notes, "
         "demo-mode fallback, and OpenAI-powered deck planning when an API key is configured."
     ),
-    version="0.3.0",
+    version="0.4.0",
 )
 
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
@@ -40,6 +40,12 @@ def _safe_filename(topic: str) -> str:
 def health_check() -> dict[str, str]:
     return {"status": "ok", "service": "ai-ppt-slide-generator"}
 
+
+
+
+@app.get("/api/ai-status")
+def ai_status() -> dict[str, str | bool]:
+    return get_ai_provider_status()
 
 @app.get("/api/themes")
 def list_themes() -> dict[str, list[str]]:

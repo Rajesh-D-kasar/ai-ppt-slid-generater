@@ -159,6 +159,25 @@ def _extract_json_object(text: str) -> str:
     return text[start : end + 1]
 
 
+
+
+def get_ai_provider_status() -> dict[str, str | bool]:
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini").strip() or "gpt-4.1-mini"
+    if api_key:
+        return {
+            "mode": "openai",
+            "has_api_key": True,
+            "model": model,
+            "message": "OpenAI generation is configured.",
+        }
+    return {
+        "mode": "demo",
+        "has_api_key": False,
+        "model": model,
+        "message": "Demo mode is active because OPENAI_API_KEY is not configured.",
+    }
+
 def generate_deck_plan(request: GenerateDeckRequest) -> DeckPlan:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:

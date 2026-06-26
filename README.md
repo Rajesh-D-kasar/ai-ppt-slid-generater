@@ -12,6 +12,7 @@ AI PPT Slide Generator is a full-stack web app that turns a simple topic or prom
 - Add speaker notes automatically
 - Export clean `.pptx` files with title, agenda, and layout-aware content slides
 - Use deck templates for business, startup pitch, education, sales, research, and general topics
+- Shows whether the app is using demo mode or a configured OpenAI API key
 - Works without an API key using demo-mode fallback content
 - FastAPI backend with a React/Vite frontend
 - Automated backend tests and GitHub Actions CI
@@ -49,6 +50,7 @@ React Frontend
 FastAPI Backend
    |
    +--> AI service
+   |      - Reports AI provider status through /api/ai-status
    |      - Uses OpenAI when OPENAI_API_KEY is available
    |      - Uses deck-specific blueprints in demo mode
    |      - Normalizes every slide with a supported layout
@@ -115,6 +117,11 @@ python -m uvicorn app.main:app --reload --port 8000
 
 Set `OPENAI_API_KEY` in `backend/.env` for real AI generation. If no key is set, the app still works in demo mode.
 
+The local app shows AI provider status in the UI:
+
+- `Demo mode`: no local API key is configured
+- `OpenAI mode`: `OPENAI_API_KEY` is configured in the backend environment
+
 ## Frontend Setup
 
 ```powershell
@@ -151,6 +158,19 @@ Returns service health.
 {
   "status": "ok",
   "service": "ai-ppt-slide-generator"
+}
+```
+
+### `GET /api/ai-status`
+
+Returns whether the backend is using demo mode or OpenAI mode. It never returns the API key.
+
+```json
+{
+  "mode": "demo",
+  "has_api_key": false,
+  "model": "gpt-4.1-mini",
+  "message": "Demo mode is active because OPENAI_API_KEY is not configured."
 }
 ```
 

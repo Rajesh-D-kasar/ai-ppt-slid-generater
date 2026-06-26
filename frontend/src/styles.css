@@ -60,6 +60,35 @@ h1 {
   line-height: 1.7;
 }
 
+
+.ai-status {
+  width: fit-content;
+  max-width: 100%;
+  display: grid;
+  gap: 3px;
+  margin-top: 18px;
+  padding: 10px 12px;
+  border: 1px solid #c8daed;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #344054;
+}
+.ai-status span {
+  color: #145388;
+  font-weight: 850;
+}
+.ai-status small {
+  color: #667085;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+.ai-status.ready {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+}
+.ai-status.ready span {
+  color: #065f46;
+}
 .example-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
 .chip {
   min-height: 34px;

@@ -1,5 +1,5 @@
 import { CheckCircle2, Download, FileText, Loader2, Sparkles, Wand2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -53,6 +53,22 @@ function App() {
   const [previewStatus, setPreviewStatus] = useState("idle");
   const [error, setError] = useState("");
   const [deckPlan, setDeckPlan] = useState(null);
+  const [aiStatus, setAiStatus] = useState({ mode: "loading", model: "", message: "Checking AI mode..." });
+
+  useEffect(() => {
+    let active = true;
+    fetch(`${API_URL}/api/ai-status`)
+      .then((response) => response.json())
+      .then((statusBody) => {
+        if (active) setAiStatus(statusBody);
+      })
+      .catch(() => {
+        if (active) setAiStatus({ mode: "offline", model: "", message: "Backend status unavailable." });
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const topicSlug = useMemo(
     () => form.topic.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "presentation",
@@ -140,6 +156,10 @@ function App() {
             Topic, deck type, audience aur tone choose karo. App outline preview karta hai,
             speaker notes banata hai, aur layout-aware editable `.pptx` download deta hai.
           </p>
+          <div className={`ai-status ${aiStatus.mode === "openai" ? "ready" : "demo"}`}>
+            <span>{aiStatus.mode === "openai" ? "OpenAI mode" : aiStatus.mode === "loading" ? "Checking AI mode" : "Demo mode"}</span>
+            <small>{aiStatus.model ? `Model: ${aiStatus.model}` : aiStatus.message}</small>
+          </div>
           <div className="example-row">
             {examples.map((example) => (
               <button className="chip" type="button" key={example.topic} onClick={() => applyExample(example)}>
