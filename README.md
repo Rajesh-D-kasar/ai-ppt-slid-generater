@@ -105,6 +105,26 @@ OPENAI_MODEL=gpt-4.1-mini
 ALLOWED_ORIGINS=http://localhost:5173
 ```
 
+
+## Testing
+
+Backend API tests use Python's built-in `unittest` runner:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m unittest discover -s tests
+```
+
+Frontend production build check:
+
+```powershell
+cd frontend
+npm run build
+```
+
+## CI
+
+GitHub Actions runs backend tests on Python 3.10 and builds the frontend with Node 22 on every push and pull request to `main`.
 ## Next Roadmap
 
 - Add image generation or stock-image selection per slide
@@ -112,4 +132,5 @@ ALLOWED_ORIGINS=http://localhost:5173
 - Add user accounts and saved deck history
 - Add PDF export
 - Add branded company themes
+
 
