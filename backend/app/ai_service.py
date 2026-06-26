@@ -8,6 +8,7 @@ from openai import OpenAI
 from .models import DeckPlan, GenerateDeckRequest, SlidePlan
 
 ALLOWED_LAYOUTS = {"bullets", "two_column", "timeline", "metrics", "quote", "closing"}
+FALSE_VALUES = {"0", "false", "no", "off"}
 
 DECK_BLUEPRINTS = {
     "business": [
@@ -80,7 +81,7 @@ def _blueprint_for(deck_type: str):
 def _clean_bullets(bullets: list[str]) -> list[str]:
     cleaned = []
     for bullet in bullets:
-        text = re.sub(r"\s+", " ", str(bullet)).strip(" -•\t")
+        text = re.sub(r"\s+", " ", str(bullet)).strip(" -\t")
         if text:
             cleaned.append(text[:180])
     return cleaned[:6]
@@ -89,6 +90,11 @@ def _clean_bullets(bullets: list[str]) -> list[str]:
 def _clean_layout(layout: str, fallback: str) -> str:
     layout = str(layout or "").strip().lower()
     return layout if layout in ALLOWED_LAYOUTS else fallback
+
+
+def _ai_fallback_enabled() -> bool:
+    value = os.getenv("AI_FALLBACK_ON_ERROR", "true").strip().lower()
+    return value not in FALSE_VALUES
 
 
 def _fallback_slide(request: GenerateDeckRequest, index: int) -> SlidePlan:
@@ -159,30 +165,28 @@ def _extract_json_object(text: str) -> str:
     return text[start : end + 1]
 
 
-
-
 def get_ai_provider_status() -> dict[str, str | bool]:
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini").strip() or "gpt-4.1-mini"
+    fallback_on_error = _ai_fallback_enabled()
     if api_key:
         return {
             "mode": "openai",
             "has_api_key": True,
             "model": model,
+            "fallback_on_error": fallback_on_error,
             "message": "OpenAI generation is configured.",
         }
     return {
         "mode": "demo",
         "has_api_key": False,
         "model": model,
+        "fallback_on_error": fallback_on_error,
         "message": "Demo mode is active because OPENAI_API_KEY is not configured.",
     }
 
-def generate_deck_plan(request: GenerateDeckRequest) -> DeckPlan:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        return normalize_deck(build_demo_deck(request), request)
 
+def _build_ai_deck(request: GenerateDeckRequest, api_key: str) -> DeckPlan:
     client = OpenAI(api_key=api_key)
     model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
     prompt = {
@@ -220,7 +224,21 @@ def generate_deck_plan(request: GenerateDeckRequest) -> DeckPlan:
 
     content = response.choices[0].message.content or "{}"
     try:
-        deck = DeckPlan.model_validate_json(content)
+        return DeckPlan.model_validate_json(content)
     except (ValueError, JSONDecodeError):
-        deck = DeckPlan.model_validate_json(_extract_json_object(content))
-    return normalize_deck(deck, request)
+        return DeckPlan.model_validate_json(_extract_json_object(content))
+
+
+def generate_deck_plan(request: GenerateDeckRequest) -> DeckPlan:
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        return normalize_deck(build_demo_deck(request), request)
+
+    try:
+        return normalize_deck(_build_ai_deck(request, api_key), request)
+    except Exception as exc:
+        if _ai_fallback_enabled():
+            fallback = build_demo_deck(request)
+            fallback.subtitle = f"{fallback.subtitle} (demo fallback after AI error)"
+            return normalize_deck(fallback, request)
+        raise RuntimeError("AI generation failed. Check OPENAI_API_KEY, OPENAI_MODEL, and billing access.") from exc

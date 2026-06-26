@@ -146,6 +146,7 @@ ALLOWED_ORIGINS=http://localhost:5173
 | --- | --- | --- |
 | `OPENAI_API_KEY` | No | Enables real AI generation. Demo mode is used when empty. |
 | `OPENAI_MODEL` | No | OpenAI model used for deck planning. Defaults to `gpt-4.1-mini`. |
+| `AI_FALLBACK_ON_ERROR` | No | Uses demo fallback content if OpenAI generation fails. Defaults to `true`. |
 | `ALLOWED_ORIGINS` | No | Comma-separated CORS origins for the frontend. |
 
 ## API Reference
@@ -285,6 +286,10 @@ GitHub Actions runs on every push and pull request to `main`:
 - Builds the React frontend
 
 Workflow file: `.github/workflows/ci.yml`
+
+## Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for Render, Vercel, and production Docker instructions.
 
 ## Docker
 

@@ -95,6 +95,17 @@ function App() {
     slide_count: Number(form.slide_count),
   });
 
+  const readApiError = async (response, fallbackMessage) => {
+    try {
+      const body = await response.json();
+      if (typeof body.detail === "string") return body.detail;
+      if (Array.isArray(body.detail)) return body.detail.map((item) => item.msg || item.type).join("; ");
+    } catch {
+      // Response was not JSON; keep the friendly fallback below.
+    }
+    return fallbackMessage;
+  };
+
   const previewDeck = async () => {
     setPreviewStatus("loading");
     setError("");
@@ -104,7 +115,7 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody()),
       });
-      if (!response.ok) throw new Error("Preview generate nahi ho paya. Backend check karo.");
+      if (!response.ok) throw new Error(await readApiError(response, "Preview generate nahi ho paya. Backend check karo."));
       setDeckPlan(await response.json());
       setPreviewStatus("success");
     } catch (caughtError) {
@@ -125,7 +136,7 @@ function App() {
         body: JSON.stringify(requestBody()),
       });
 
-      if (!response.ok) throw new Error("Presentation generate nahi ho payi. Backend check karo.");
+      if (!response.ok) throw new Error(await readApiError(response, "Presentation generate nahi ho payi. Backend check karo."));
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);

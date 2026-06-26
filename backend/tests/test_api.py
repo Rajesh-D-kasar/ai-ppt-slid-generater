@@ -24,6 +24,7 @@ VALID_PAYLOAD = {
 class ApiTestCase(unittest.TestCase):
     def setUp(self):
         os.environ.pop("OPENAI_API_KEY", None)
+        os.environ.pop("AI_FALLBACK_ON_ERROR", None)
         self.client = TestClient(app)
 
     def test_health_endpoint(self):
@@ -31,7 +32,6 @@ class ApiTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-
 
     def test_ai_status_endpoint_reports_demo_mode(self):
         response = self.client.get("/api/ai-status")
@@ -41,6 +41,7 @@ class ApiTestCase(unittest.TestCase):
         self.assertEqual(body["mode"], "demo")
         self.assertFalse(body["has_api_key"])
         self.assertEqual(body["model"], "gpt-4.1-mini")
+        self.assertTrue(body["fallback_on_error"])
 
     def test_ai_status_endpoint_reports_openai_mode(self):
         os.environ["OPENAI_API_KEY"] = "test-key"
@@ -52,6 +53,7 @@ class ApiTestCase(unittest.TestCase):
         body = response.json()
         self.assertEqual(body["mode"], "openai")
         self.assertTrue(body["has_api_key"])
+        self.assertTrue(body["fallback_on_error"])
 
     def test_theme_endpoint_lists_available_themes(self):
         response = self.client.get("/api/themes")

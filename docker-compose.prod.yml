@@ -2,20 +2,21 @@ services:
   backend:
     build:
       context: ./backend
+    env_file:
+      - ./backend/.env
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4.1-mini}
+      - ALLOWED_ORIGINS=http://localhost:8080
       - AI_FALLBACK_ON_ERROR=${AI_FALLBACK_ON_ERROR:-true}
-      - ALLOWED_ORIGINS=http://localhost:5173
     ports:
       - "8000:8000"
 
   frontend:
     build:
       context: ./frontend
-    environment:
-      - VITE_API_URL=http://localhost:8000
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: http://localhost:8000
     ports:
-      - "5173:5173"
+      - "8080:80"
     depends_on:
       - backend

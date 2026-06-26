@@ -2,7 +2,7 @@ import os
 import re
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
@@ -19,7 +19,7 @@ app = FastAPI(
         "The API supports outline preview, deck types, themed PPTX export, speaker notes, "
         "demo-mode fallback, and OpenAI-powered deck planning when an API key is configured."
     ),
-    version="0.4.0",
+    version="0.5.0",
 )
 
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
@@ -36,16 +36,22 @@ def _safe_filename(topic: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]+", "-", topic).strip("-").lower() or "presentation"
 
 
+def _build_deck_or_502(request: GenerateDeckRequest):
+    try:
+        return generate_deck_plan(request)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
 @app.get("/api/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok", "service": "ai-ppt-slide-generator"}
 
 
-
-
 @app.get("/api/ai-status")
 def ai_status() -> dict[str, str | bool]:
     return get_ai_provider_status()
+
 
 @app.get("/api/themes")
 def list_themes() -> dict[str, list[str]]:
@@ -59,12 +65,12 @@ def list_deck_types() -> dict[str, dict[str, str]]:
 
 @app.post("/api/preview-plan")
 def preview_plan(request: GenerateDeckRequest):
-    return generate_deck_plan(request)
+    return _build_deck_or_502(request)
 
 
 @app.post("/api/generate-ppt")
 def generate_ppt(request: GenerateDeckRequest) -> StreamingResponse:
-    deck = generate_deck_plan(request)
+    deck = _build_deck_or_502(request)
     pptx = build_pptx(deck, request.theme, request.deck_type)
 
     return StreamingResponse(
