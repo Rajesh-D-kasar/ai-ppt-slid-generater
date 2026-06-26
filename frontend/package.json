@@ -1,8 +1,17 @@
 {
   "name": "ai-ppt-slide-generator",
   "version": "0.1.0",
+  "description": "React frontend for an AI-powered PowerPoint generator with outline preview, themes, speaker notes, and PPTX download.",
   "private": true,
   "type": "module",
+  "keywords": [
+    "ai",
+    "ppt",
+    "powerpoint",
+    "presentation",
+    "react",
+    "vite"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",

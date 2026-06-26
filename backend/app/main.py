@@ -14,7 +14,11 @@ load_dotenv()
 
 app = FastAPI(
     title="AI PPT Slide Generator API",
-    description="Generate structured presentation plans and editable PowerPoint files.",
+    description=(
+        "Generate structured presentation outlines and editable PowerPoint files from a prompt. "
+        "The API supports outline preview, themed PPTX export, speaker notes, demo-mode fallback, "
+        "and OpenAI-powered deck planning when an API key is configured."
+    ),
     version="0.2.0",
 )
 
@@ -57,3 +61,4 @@ def generate_ppt(request: GenerateDeckRequest) -> StreamingResponse:
         media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
         headers={"Content-Disposition": f'attachment; filename="{_safe_filename(request.topic)}.pptx"'},
     )
+
