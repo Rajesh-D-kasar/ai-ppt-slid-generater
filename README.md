@@ -41,9 +41,11 @@ Then open `http://localhost:5173`.
 
 ## Backend Setup
 
+Use Python 3.10, 3.11, or 3.12 for the backend virtual environment. Python 3.14 may try to build native packages locally.
+
 ```powershell
 cd backend
-python -m venv .venv
+py -3.10 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 copy .env.example .env
@@ -110,3 +112,4 @@ ALLOWED_ORIGINS=http://localhost:5173
 - Add user accounts and saved deck history
 - Add PDF export
 - Add branded company themes
+
