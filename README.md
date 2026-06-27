@@ -1,128 +1,239 @@
-# AI PPT Slide Generator
+# AI PPT Generator
 
-AI PPT Slide Generator is a full-stack web app that turns a simple topic or prompt into an editable PowerPoint presentation. It creates a structured deck outline, supports multiple deck types, renders varied slide layouts, previews the plan before download, and exports a real `.pptx` file.
+AI PPT Generator is a full-stack app that creates editable PowerPoint presentations from a topic, audience, tone, and deck type.
 
-[![CI](https://github.com/Rajesh-D-kasar/ai-ppt-slid-generater/actions/workflows/ci.yml/badge.svg)](https://github.com/Rajesh-D-kasar/ai-ppt-slid-generater/actions/workflows/ci.yml)
+## Overview
 
-## Highlights
+This project combines a React/Vite frontend with a FastAPI backend. The backend can use the OpenAI API to generate a structured deck outline, then converts that outline into a real `.pptx` file using `python-pptx`.
 
-- Generate editable PowerPoint decks from a topic or prompt
-- Preview the AI-created slide outline before downloading
-- Choose deck type, slide count, audience, tone, language, and visual theme
-- Add speaker notes automatically
-- Export clean `.pptx` files with title, agenda, and layout-aware content slides
-- Use deck templates for business, startup pitch, education, sales, research, and general topics
-- Shows whether the app is using demo mode or a configured OpenAI API key
-- Works without an API key using demo-mode fallback content
-- FastAPI backend with a React/Vite frontend
-- Automated backend tests and GitHub Actions CI
+If no API key is configured, or if the AI request fails, the app can still generate a demo deck from built-in templates.
 
-## Demo Flow
+## Features
 
-1. Enter a topic, for example `AI tools for small businesses`.
-2. Choose a deck type such as `Business Brief`, `Startup Pitch`, `Education Deck`, `Sales Deck`, or `Research Report`.
-3. Set slide count, audience, tone, language, and theme.
-4. Click `Preview Outline` to inspect the generated deck plan.
-5. Click `Generate PPT` to download the editable PowerPoint file.
+- Generate editable `.pptx` presentations
+- Preview the slide outline before downloading
+- Choose slide count, audience, tone, language, theme, and deck type
+- Supports speaker notes
+- Supports deck types: business, startup pitch, education, sales, research, and general
+- Supports layouts: bullets, two-column, timeline, metrics, quote, and closing
+- Shows whether the backend is running in OpenAI mode or demo mode
+- Includes backend tests and GitHub Actions CI
 
 ## Tech Stack
 
-| Layer | Tools |
+| Area | Technology |
 | --- | --- |
 | Frontend | React, Vite, lucide-react |
-| Backend | FastAPI, Pydantic, OpenAI SDK |
+| Backend | FastAPI, Pydantic, Uvicorn |
+| AI | OpenAI Python SDK |
 | PPT export | python-pptx |
-| Testing | Python unittest, FastAPI TestClient, Vite build |
-| CI | GitHub Actions |
-| Runtime | Local PowerShell script or Docker Compose |
+| Config | python-dotenv |
+| Tests | Python unittest, FastAPI TestClient |
 
-## Architecture
+## How It Works
+
+1. The user fills the generator form in the React frontend.
+2. The frontend sends the request to the FastAPI backend.
+3. The backend validates the request with Pydantic.
+4. `ai_service.py` creates a deck plan using OpenAI or demo templates.
+5. `pptx_service.py` renders the deck into an editable PowerPoint file.
+6. The backend returns the `.pptx` file as a download.
+
+Main backend entrypoint:
 
 ```text
-User Prompt
-   |
-   v
-React Frontend
-   |
-   | POST /api/preview-plan
-   | POST /api/generate-ppt
-   v
-FastAPI Backend
-   |
-   +--> AI service
-   |      - Reports AI provider status through /api/ai-status
-   |      - Uses OpenAI when OPENAI_API_KEY is available
-   |      - Uses deck-specific blueprints in demo mode
-   |      - Normalizes every slide with a supported layout
-   |
-   +--> PPTX service
-          - Builds title slide
-          - Builds agenda slide
-          - Renders quote, bullets, two-column, timeline, metrics, and closing layouts
-          - Adds speaker notes
-          - Returns .pptx download
+backend/app/main.py
+FastAPI app: app.main:app
 ```
+
+Important API routes:
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| GET | `/api/health` | Health check |
+| GET | `/api/ai-status` | Shows demo/OpenAI mode |
+| GET | `/api/themes` | Lists available themes |
+| GET | `/api/deck-types` | Lists deck templates |
+| POST | `/api/preview-plan` | Returns slide outline JSON |
+| POST | `/api/generate-ppt` | Downloads the generated `.pptx` |
 
 ## Project Structure
 
 ```text
-.github/
-  workflows/
-    ci.yml                 GitHub Actions workflow
 backend/
   app/
-    main.py                API routes and app metadata
-    models.py              request and deck schemas
-    ai_service.py          AI prompt, deck blueprints, demo fallback, normalization
-    pptx_service.py        PowerPoint generation, themes, deck labels, slide layouts
+    main.py          FastAPI routes and app setup
+    models.py        Request and response schemas
+    ai_service.py    OpenAI integration, demo templates, normalization
+    pptx_service.py  PowerPoint generation and slide layouts
   tests/
-    test_api.py            backend API and PPT export tests
-  requirements.txt         backend dependencies
+    test_api.py      Backend API and PPT export tests
+  requirements.txt
+
 frontend/
   src/
-    App.jsx                generator UI and download flow
-    styles.css             responsive product styling
-  package.json             frontend scripts and dependencies
-  package-lock.json        locked npm dependency tree
-run-dev.ps1                one-command local startup script
-docker-compose.yml         optional Docker runtime
+    App.jsx          Generator UI and download flow
+    styles.css       Responsive styling
+  package.json
+
+run-dev.ps1          One-command local startup script
+docker-compose.yml   Optional Docker Compose setup
+DEPLOYMENT.md        Deployment notes
 ```
 
-## Quick Start
+## Setup Instructions
 
-Run everything with one command:
+### Required Software
+
+Install these first:
+
+1. Python 3.10, 3.11, or 3.12
+2. Node.js LTS
+3. Git
+4. PowerShell, already available on Windows
+
+Check installation:
+
+```powershell
+python --version
+node --version
+npm --version
+git --version
+```
+
+If these commands show version numbers, the system is ready.
+
+### Clone the Project
+
+Open PowerShell and run:
+
+```powershell
+git clone https://github.com/Rajesh-D-kasar/ai-ppt-slid-generater.git
+cd ai-ppt-slid-generater
+```
+
+If you downloaded ZIP from GitHub instead, unzip it, open that folder, then right-click inside the folder and choose `Open in Terminal`.
+
+### Add API Key
+
+Go to this file:
+
+```text
+backend/.env
+```
+
+If `.env` does not exist, create it by copying `.env.example`:
+
+```powershell
+cd backend
+copy .env.example .env
+```
+
+Open `backend/.env` and add your key:
+
+```env
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4.1-mini
+AI_FALLBACK_ON_ERROR=true
+ALLOWED_ORIGINS=http://localhost:5173
+```
+
+Do not upload `.env` to GitHub.
+
+## Beginner Friendly Run Guide
+
+This is the easiest way to run the project on Windows.
+
+### Step 1: Open the Project Folder
+
+Open PowerShell in the main project folder. The folder should contain these files:
+
+```text
+backend
+frontend
+run-dev.ps1
+README.md
+```
+
+If you are not inside the project folder, go there with:
+
+```powershell
+cd path\to\ai-ppt-slid-generater
+```
+
+Example:
+
+```powershell
+cd C:\Users\ASUS\Documents\Codex\2026-06-24\github-plugin-github-openai-curated-remote-2
+```
+
+### Step 2: Run One Command
+
+Run:
 
 ```powershell
 .\run-dev.ps1
 ```
 
-Then open:
+The first run can take a few minutes because it installs backend and frontend dependencies.
 
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:8000`
-- API docs: `http://localhost:8000/docs`
+### Step 3: Open the App
 
-## Backend Setup
+After the command finishes, open this in your browser:
 
-Use Python 3.10, 3.11, or 3.12 for the backend virtual environment. Python 3.14 may try to build native packages locally.
+```text
+http://localhost:5173
+```
+
+Backend API docs are available here:
+
+```text
+http://localhost:8000/docs
+```
+
+### Step 4: Use the App
+
+1. Enter a topic.
+2. Select deck type, audience, tone, theme, and slide count.
+3. Click `Preview Outline`.
+4. Click `Generate PPT`.
+5. The PowerPoint file will download.
+
+### If PowerShell Blocks the Script
+
+Run this command once in the same PowerShell window:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+Then run again:
+
+```powershell
+.\run-dev.ps1
+```
+
+## Manual Run Commands
+
+Use this method if you want to run backend and frontend separately.
+
+### Backend
+
+Open PowerShell in the project folder:
 
 ```powershell
 cd backend
 py -3.10 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-copy .env.example .env
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-Set `OPENAI_API_KEY` in `backend/.env` for real AI generation. If no key is set, the app still works in demo mode.
+Keep this terminal open.
 
-The local app shows AI provider status in the UI:
+### Frontend
 
-- `Demo mode`: no local API key is configured
-- `OpenAI mode`: `OPENAI_API_KEY` is configured in the backend environment
-
-## Frontend Setup
+Open a second PowerShell window in the project folder:
 
 ```powershell
 cd frontend
@@ -130,216 +241,167 @@ npm install
 npm run dev
 ```
 
-The frontend expects the backend at `http://localhost:8000`. Override it with `VITE_API_URL` if needed.
+Keep this terminal open too.
+
+Now open:
+
+```text
+http://localhost:5173
+```
 
 ## Environment Variables
 
-Create `backend/.env` from `backend/.env.example`:
-
-```text
-OPENAI_API_KEY=your_key_here
-OPENAI_MODEL=gpt-4.1-mini
-ALLOWED_ORIGINS=http://localhost:5173
-```
+Backend variables:
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `OPENAI_API_KEY` | No | Enables real AI generation. Demo mode is used when empty. |
-| `OPENAI_MODEL` | No | OpenAI model used for deck planning. Defaults to `gpt-4.1-mini`. |
-| `AI_FALLBACK_ON_ERROR` | No | Uses demo fallback content if OpenAI generation fails. Defaults to `true`. |
-| `ALLOWED_ORIGINS` | No | Comma-separated CORS origins for the frontend. |
+| `OPENAI_API_KEY` | No | Enables OpenAI deck generation. Without it, demo mode is used. |
+| `OPENAI_MODEL` | No | OpenAI model name. Default: `gpt-4.1-mini`. |
+| `AI_FALLBACK_ON_ERROR` | No | Uses demo fallback when AI fails. Default: `true`. |
+| `ALLOWED_ORIGINS` | No | CORS origins. Default: `http://localhost:5173`. |
 
-## API Reference
+Frontend variable:
 
-### `GET /api/health`
+| Variable | Required | Description |
+| --- | --- | --- |
+| `VITE_API_URL` | No | Backend URL. Default: `http://localhost:8000`. |
 
-Returns service health.
+## Running the Project
 
-```json
-{
-  "status": "ok",
-  "service": "ai-ppt-slide-generator"
-}
+Recommended command:
+
+```powershell
+.\run-dev.ps1
 ```
 
-### `GET /api/ai-status`
-
-Returns whether the backend is using demo mode or OpenAI mode. It never returns the API key.
-
-```json
-{
-  "mode": "demo",
-  "has_api_key": false,
-  "model": "gpt-4.1-mini",
-  "message": "Demo mode is active because OPENAI_API_KEY is not configured."
-}
-```
-
-### `GET /api/themes`
-
-Returns available presentation themes.
-
-```json
-{
-  "themes": ["dark", "minimal", "modern", "startup", "warm"]
-}
-```
-
-### `GET /api/deck-types`
-
-Returns available deck type templates.
-
-```json
-{
-  "deck_types": {
-    "business": "Business Brief",
-    "startup_pitch": "Startup Pitch",
-    "education": "Education Deck",
-    "sales": "Sales Deck",
-    "research": "Research Report",
-    "general": "General Deck"
-  }
-}
-```
-
-### `POST /api/preview-plan`
-
-Returns the generated deck outline as JSON.
-
-```json
-{
-  "topic": "Artificial Intelligence in Education",
-  "slide_count": 8,
-  "audience": "college students",
-  "tone": "educational",
-  "theme": "modern",
-  "deck_type": "education",
-  "language": "English",
-  "include_speaker_notes": true,
-  "extra_instructions": "Use simple examples and practical takeaways."
-}
-```
-
-### `POST /api/generate-ppt`
-
-Returns a downloadable PowerPoint file.
-
-Response content type:
-
-```text
-application/vnd.openxmlformats-officedocument.presentationml.presentation
-```
-
-## Deck Types and Layouts
-
-Available deck types:
-
-- `business`: executive brief, priorities, impact, roadmap, metrics
-- `startup_pitch`: problem, solution, market, business model, traction, ask
-- `education`: learning goals, examples, checks, takeaways
-- `sales`: customer problem, value drivers, proof, rollout, next step
-- `research`: question, methodology, findings, limitations, recommendations
-- `general`: flexible structure for broad topics
-
-Slides can use these layouts:
-
-- `quote`: big opening insight or framing statement
-- `bullets`: standard content slide with visual panel
-- `two_column`: compare priorities, risks, actions, or proof points
-- `timeline`: phased roadmap or step-by-step explanation
-- `metrics`: card-based impact or KPI slide
-- `closing`: final recommendation and next steps
-
-## Themes
-
-Available themes:
-
-- `modern`
-- `minimal`
-- `startup`
-- `dark`
-- `warm`
-
-## Testing
-
-Backend API tests:
+Manual backend command:
 
 ```powershell
 cd backend
-.\.venv\Scripts\python.exe -m unittest discover -s tests
+.\.venv\Scripts\Activate.ps1
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
-Frontend production build:
+Manual frontend command:
 
 ```powershell
 cd frontend
-npm run build
+npm run dev
 ```
 
-## CI
+Open:
 
-GitHub Actions runs on every push and pull request to `main`:
-
-- Installs backend dependencies on Python 3.10
-- Runs backend API tests
-- Installs frontend dependencies with `npm ci`
-- Builds the React frontend
-
-Workflow file: `.github/workflows/ci.yml`
-
-## Deployment
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for Render, Vercel, and production Docker instructions.
-
-## Docker
-
-Optional Docker workflow:
-
-```powershell
-docker compose up --build
-```
-
-Services:
-
-- Backend: `http://localhost:8000`
 - Frontend: `http://localhost:5173`
+- Backend docs: `http://localhost:8000/docs`
 
-## Troubleshooting
+## Usage Guide
 
-### Python dependency install fails on Windows
+1. Enter a presentation topic.
+2. Select deck type, slide count, audience, tone, language, and theme.
+3. Click `Preview Outline` to review the slide plan.
+4. Click `Generate PPT` to download the editable PowerPoint file.
 
-Use Python 3.10, 3.11, or 3.12. Python 3.14 may try to compile native packages locally.
+## Example Workflow
 
-```powershell
-Remove-Item backend\.venv -Recurse -Force
-py -3.10 -m venv backend\.venv
-backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+Example input:
+
+```text
+Topic: AI tools for small businesses
+Deck type: Business Brief
+Audience: Small business owners
+Tone: Professional
+Slides: 8
+Theme: Modern
 ```
 
-### Frontend cannot reach backend
+Expected output:
 
-Check that the backend is running:
+- Title slide
+- Agenda slide
+- Structured content slides
+- Speaker notes, if enabled
+- Downloadable `.pptx` file
+
+## Screenshots
+
+Screenshots are not included in the repository yet. Recommended screenshots to add later:
+
+- Generator form
+- Outline preview
+- Downloaded PowerPoint deck
+
+## Common Problems
+
+### `python` or `py` is not recognized
+
+Install Python 3.10, 3.11, or 3.12, then reopen PowerShell.
+
+### `npm` is not recognized
+
+Install Node.js LTS, then reopen PowerShell.
+
+### PowerShell script is blocked
+
+Run:
 
 ```powershell
-Invoke-RestMethod http://localhost:8000/api/health
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
-If the backend is on another URL, set `VITE_API_URL` before starting Vite.
+Then run:
 
-### AI output is demo content
+```powershell
+.\run-dev.ps1
+```
 
-Set `OPENAI_API_KEY` in `backend/.env` and restart the backend.
+### Frontend does not open
 
-## Roadmap
+Make sure this URL is used:
 
-- Add slide image generation or stock-image suggestions
-- Add branded company templates and uploaded master slide support
-- Add template upload support
-- Add user accounts and saved deck history
-- Add PDF export
-- Add presentation sharing links
-- Add deployment configs for production hosting
+```text
+http://localhost:5173
+```
 
-## Repository
+### Backend docs do not open
 
-GitHub: https://github.com/Rajesh-D-kasar/ai-ppt-slid-generater
+Make sure backend is running, then open:
+
+```text
+http://localhost:8000/docs
+```
+
+### App shows demo mode
+
+This means the API key is missing, invalid, or OpenAI quota/billing is not active. The app can still generate demo PPT files.
+
+## Limitations
+
+- OpenAI generation requires a valid API key with active quota/billing.
+- Demo mode uses predefined templates, so content is less customized than AI output.
+- The PowerPoint uses generated text, shapes, layouts, and speaker notes; it does not insert AI-generated images.
+- No user authentication is included.
+- No database is currently used.
+
+## Future Improvements
+
+- Add saved presentation history
+- Add user accounts
+- Add more PowerPoint themes
+- Add image generation or image upload support
+- Add export options such as PDF
+- Add more tests for layout rendering
+
+## What I Learned
+
+- Building a full-stack AI workflow with React and FastAPI
+- Validating API input with Pydantic
+- Using OpenAI responses to create structured slide plans
+- Generating editable PowerPoint files with `python-pptx`
+- Handling fallback behavior when an AI API is unavailable
+- Organizing a project for local setup, CI, and deployment documentation
+
+## Author
+
+Rajesh
+
+GitHub: [Rajesh-D-kasar](https://github.com/Rajesh-D-kasar)
