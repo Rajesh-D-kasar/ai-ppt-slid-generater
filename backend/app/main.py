@@ -12,7 +12,7 @@ from .models import DeckPlan, GenerateDeckRequest
 from .pptx_service import DECK_TYPE_LABELS, THEMES, build_pptx
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-load_dotenv(BACKEND_DIR / ".env")
+load_dotenv(BACKEND_DIR / ".env", override=True, encoding="utf-8-sig")
 
 app = FastAPI(
     title="AI PPT Slide Generator API",
